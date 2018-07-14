@@ -20,6 +20,10 @@
    `(let [v# ~x]
       (if (some? v#) v# (non-nil ~@xs)))))
 
+;;;
+;;; Threading
+;;;
+
 (defmacro select->
   "Threads `x` syntactically through the left-hand side of `forms` and evaluates
   the forms in a short-circuiting manner returning the first non-nil result,
@@ -91,7 +95,36 @@
     => {:status 200 :body ...}"
     [f x & forms])
 
+;;;
+;;; Maps
+;;;
 
-;; XXX(soija) Like `clojure.set/rename-keys` but done right
-#_
-(defn remap-keys [map kmap])
+(defmacro map-of
+  ([] '{})
+  ([& syms]
+   {:pre [(every? symbol? syms)]}
+   (let [syms (dedupe syms)]
+     `(~(if (> (count syms) 8)
+          'hash-map
+          'array-map)
+       ~@(mapcat (fn [s]
+                   (list (keyword s) s))
+                 syms)))))
+
+(defn remap
+  [map proj]
+  (reduce (fn [m [new old]]
+            (if (contains? map old)
+              (assoc m new (get map old))
+              m))
+          (apply dissoc map (vals proj))
+          proj))
+
+(defn project
+  [map proj]
+  (reduce (fn [m [new old]]
+            (if (contains? map old)
+              (assoc m new (get map old))
+              m))
+          {}
+          proj))
