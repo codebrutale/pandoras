@@ -90,3 +90,8 @@
       (http/get \"http://example.com/c\"))
     => {:status 200 :body ...}"
     [f x & forms])
+
+
+;; XXX(soija) Like `clojure.set/rename-keys` but done right
+#_
+(defn remap-keys [map kmap])
