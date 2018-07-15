@@ -7,7 +7,7 @@ change log follows the conventions of [keepachangelog.com].
 
 ### Changed
 
-- Add `void`, `non-nil`, `select->`, `select->>`, `map-of`, `remap`, and
+- Add `void`, `non-nil`, `select->`, `select->>`, `map-of`, `preimage`, and
   `project` as unstable
 
 [Unreleased]: https://github.com/codebrutale/pandoras/HEAD

@@ -111,7 +111,7 @@
                    (list (keyword s) s))
                  syms)))))
 
-(defn remap
+(defn preimage
   [map proj]
   (loop [m (loop [m (transient map)
                   vs (vals proj)]
