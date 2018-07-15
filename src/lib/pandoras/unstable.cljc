@@ -113,18 +113,29 @@
 
 (defn remap
   [map proj]
-  (reduce (fn [m [new old]]
-            (if (contains? map old)
-              (assoc m new (get map old))
-              m))
-          (apply dissoc map (vals proj))
-          proj))
+  (loop [m (loop [m (transient map)
+                  vs (vals proj)]
+             (if-let [v (first vs)]
+               (recur (dissoc! m v)
+                      (rest vs))
+               m))
+         ps (seq proj)]
+    (if-let [p (first ps)]
+      (let [o (val p)]
+        (recur (if (contains? map o)
+                 (assoc! m (key p) (get map o))
+                 m)
+               (rest ps)))
+      (persistent! m))))
 
 (defn project
   [map proj]
-  (reduce (fn [m [new old]]
-            (if (contains? map old)
-              (assoc m new (get map old))
-              m))
-          {}
-          proj))
+  (loop [m (transient {})
+         ps (seq proj)]
+    (if-let [p (first ps)]
+      (let [o (val p)]
+        (recur (if (contains? map o)
+                 (assoc! m (key p) (get map o))
+                 m)
+               (rest ps)))
+      (persistent! m))))
