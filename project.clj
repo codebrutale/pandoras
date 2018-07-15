@@ -8,9 +8,11 @@
   :dependencies [[org.clojure/clojure "1.9.0"]]
   :source-paths ["src/lib"]
   :test-paths ["src/test"]
-  :profiles {:dev {:source-paths ["src/dev" "src/test"]}
-             :test {}
+  :profiles {:dev {:dependencies [[citius "0.2.4"]
+                                  [criterium "0.4.4"]
+                                  [org.clojure/test.check "0.9.0"]]
+                   :source-paths ["src/dev" "src/test" "src/bench"]}
              :1.7 {:dependencies [[org.clojure/clojure "1.7.0"]]}
              :1.8 {:dependencies [[org.clojure/clojure "1.8.0"]]}}
-  :aliases {"with-test-profiles" ["with-profiles" "test:test,1.8:test,1.7"]
+  :aliases {"with-test-profiles" ["with-profiles" "dev:dev,1.8:dev,1.7"]
             "test-all" ["with-test-profiles" "test"]})

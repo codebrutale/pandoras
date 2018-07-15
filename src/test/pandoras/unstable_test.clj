@@ -1,5 +1,9 @@
 (ns pandoras.unstable-test
-  (:require [clojure.test :refer [deftest testing is]]
+  (:require [clojure.set :as set]
+            [clojure.test :refer [deftest testing is]]
+            [clojure.test.check.clojure-test :refer [defspec]]
+            [clojure.test.check.generators :as gen]
+            [clojure.test.check.properties :as prop]
             [pandoras.unstable :refer :all]))
 
 (deftest void-tests
@@ -180,3 +184,79 @@
                (a-nil :e))
              {:arg 1
               :fn [:a :b :c]})))))
+
+;;;
+;;; preimage
+;;;
+
+(deftest test-preimage
+  (testing "missing keys are ignored"
+    (is (= (preimage {} {:a :b}) {}))
+    (is (= (preimage {:a 1} {:a :b}) {:a 1})))
+  (testing "allows permutation"
+    (is (= (preimage {:a 1, :b 2, :c 3}
+                     {:a :b, :b :c, :c :a})
+           {:a 2, :b 3, :c 1})))
+  (testing "allows \"surjective preimage\""
+    (is (= (preimage {:a 1, :b 2} {:a :a, :c :a}) {:a 1, :b 2, :c 1}))
+    (is (= (preimage {:a 1, :b 2} {:c :a, :d :a}) {:b 2, :c 1, :d 1}))))
+
+(defn- splits-gen
+  [max-size]
+  (gen/bind (gen/choose 0 max-size)
+            (fn [n]
+              (let [n1 (gen/generate (gen/choose 0 n))
+                    n2 (gen/generate (gen/choose 0 (- n n1)))
+                    n3 (- n n1 n2)]
+                (gen/return (gen/generate (gen/shuffle [n1 n2 n3])))))))
+
+(defn- bijective-cases-gen
+  [key-gen val-gen max-size]
+  (gen/bind (gen/such-that (fn [[n _ _]]
+                             (not= n 1))
+                           (splits-gen max-size))
+            (fn [[n-perm n-trans n-unchanged]]
+              (let [n (+ n-perm
+                         n-trans
+                         n-trans
+                         n-unchanged)
+                    m (gen/generate (gen/map key-gen
+                                             val-gen
+                                             {:num-elements n
+                                              :max-tries 100}))
+                    tmp (gen/generate (gen/shuffle (keys m)))
+                    [perm-src tmp] (split-at n-perm tmp)
+                    perm-dst (if (seq perm-src)
+                               (concat (rest perm-src) [(first perm-src)])
+                               perm-src)
+                    [trans-src tmp] (split-at n-trans tmp)
+                    trans-dst (take n-trans tmp)]
+                (gen/return [(apply dissoc m trans-dst)
+                             (zipmap (concat perm-src trans-src)
+                                     (concat perm-dst trans-dst))
+                             (count perm-src)
+                             (count trans-src)])))))
+
+(defspec spec-bijective-cases-gen
+  (prop/for-all [[m f n-perm n-trans] (bijective-cases-gen gen/nat gen/nat 100)]
+    (let [ks (set (keys m))
+          xs (set (keys f))
+          ys (set (vals f))]
+      (and (set/subset? xs ks)
+           (= (count xs)
+              (count ys)
+              (+ n-perm n-trans))
+           (= (count (set/intersection xs ys))
+              n-perm)))))
+
+(defspec spec-preimage-corresponds-rename-keys-in-bijective-case-1
+  (prop/for-all [[m f _ _] (bijective-cases-gen gen/any gen/any 10)]
+    (let [invf (into {} (map (juxt val key)) f)]
+      (= (preimage m invf)
+         (set/rename-keys m f)))))
+
+(defspec spec-preimage-corresponds-rename-keys-in-bijective-case-2
+  (prop/for-all [[m f _ _] (bijective-cases-gen gen/nat gen/nat 1000)]
+    (let [invf (into {} (map (juxt val key)) f)]
+      (= (preimage m invf)
+         (set/rename-keys m f)))))
